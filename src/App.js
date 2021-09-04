@@ -4,7 +4,7 @@ import ImageView from './ImageView.js'
 import Loading from './Loading.js'
 import { request } from './api.js'
 
-const cache = [];
+const cache = {};
 
 export default function App($app){
     this.state = {
@@ -35,15 +35,26 @@ export default function App($app){
         initialState: [],
         onClick: async (node) => {
             try {
+                console.log(cache,node.id)
                 loading.setState(true);
                 if(node.type === 'DIRECTORY') {
-                    const nextNodes = await request(node.id);
-                    this.setState({
-                        ...this.state,
-                        depth: [...this.state.depth, node],
-                        nodes: nextNodes,
-                        isRoot: false
-                    })
+                    if(cache[node.id]){
+                        this.setState({
+                            ...this.state,
+                            depth: [...this.state.depth, node],
+                            nodes: cache[node.id],
+                            isRoot: false
+                        })
+                    } else{
+                        const nextNodes = await request(node.id);
+                        this.setState({
+                            ...this.state,
+                            depth: [...this.state.depth, node],
+                            nodes: nextNodes,
+                            isRoot: false
+                        })
+                        cache[node.id] = nextNodes;
+                    }
                 } else if(node.type === 'FILE'){
                     this.setState({
                         ...this.state,
@@ -65,20 +76,20 @@ export default function App($app){
                 const prevNodeId = nextState.depth.length === 0 ? null : nextState.depth[nextState.depth.length - 1].id
                 
                 if(prevNodeId === null) {
-                    const rootNodes = await request()
+                    //const rootNodes = await request()
                     this.setState({
                         ...nextState,
                         isRoot: true,
-                        nodes: rootNodes,
+                        nodes: cache.rootNodes,
                         selectedFilePath: null
                     })
                 } else {
-                    const prevNodes = await request(prevNodeId)
+                    //const prevNodes = await request(prevNodeId)
 
                     this.setState({
                         ...nextState,
                         isRoot: false,
-                        nodes: prevNodes,
+                        nodes: cache[prevNodeId],
                         selectedFilePath: null
                     })
                 }
@@ -114,6 +125,8 @@ export default function App($app){
                 isRoot: true,
                 nodes: rootNodes
             })
+            cache.rootNodes = rootNodes;
+            console.log(cache)
         } catch(e){
             throw new Error('이상 이상!');
         } finally {
